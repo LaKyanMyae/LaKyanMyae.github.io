@@ -37,7 +37,7 @@
 </div>
 
 <script>
-    // သင့်ရဲ့ Firebase Config ကို အောက်မှာ ထည့်သွင်းထားပါတယ်
+    // သင့်ရဲ့ Firebase Config အသစ် (Asia Southeast Region)
     const firebaseConfig = {
         apiKey: "AIzaSyDFVm4Qht1XHdkimbHX4lcvoBVoEao99cQ",
         authDomain: "la-kyan-myae---learning.firebaseapp.com",
@@ -53,28 +53,46 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // Database ထဲက အချက်အလက်များကို Real-time ဆွဲထုတ်ခြင်း
+    // Database ထဲက အချက်အလက်များကို Root ('/') ကနေ တိုက်ရိုက်ဖတ်ခြင်း
     const tableBody = document.getElementById('tableBody');
     const loadingDiv = document.getElementById('loading');
 
-    database.ref('students').on('value', (snapshot) => {
+    database.ref('/').on('value', (snapshot) => {
         tableBody.innerHTML = "";
         if (snapshot.exists()) {
             loadingDiv.style.display = "none";
             snapshot.forEach((childSnapshot) => {
                 const data = childSnapshot.val();
-                const row = `<tr>
-                    <td>${data.name}</td>
-                    <td>${data.phone}</td>
-                    <td>${new Date(data.timestamp).toLocaleString()}</td>
-                </tr>`;
-                tableBody.innerHTML += row;
+                
+                // ဒေတာထဲမှာ အမည်နဲ့ ဖုန်းနံပါတ် ရှိမရှိ စစ်ဆေးခြင်း
+                if(data.name && data.phone) {
+                    const row = `<tr>
+                        <td>${data.name}</td>
+                        <td>${data.phone}</td>
+                        <td>${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                }
             });
+            
+            // အကယ်၍ students အောက်မှာ ဒေတာမရှိရင် (ဥပမာ students group သီးသန့်ရှိရင်)
+            if (tableBody.innerHTML === "") {
+                const studentsRef = snapshot.child('students');
+                studentsRef.forEach((studentSnapshot) => {
+                    const data = studentSnapshot.val();
+                    const row = `<tr>
+                        <td>${data.name}</td>
+                        <td>${data.phone}</td>
+                        <td>${data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                });
+            }
         } else {
             loadingDiv.innerText = "စာရင်းသွင်းထားသော ကျောင်းသား မရှိသေးပါ။";
         }
     }, (error) => {
-        console.error("Error fetching data: ", error);
+        console.error("Database Error: ", error);
         loadingDiv.innerText = "Error: Database Access Denied (Rule ကို စစ်ဆေးပါ)။";
     });
 </script>
