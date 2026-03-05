@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Kyan Myae Learning Center</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        h1 { color: #1a73e8; }
+        .btn { background-color: #4285F4; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; width: 100%; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        #user-profile { display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        .user-img { border-radius: 50%; margin-bottom: 10px; border: 2px solid #4285F4; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>La Kyan Myae</h1>
+    <p>English & Computer Learning Center</p>
+
+    <div id="login-section">
+        <p>ရှေ့ဆက်ရန် Google ဖြင့် Login ဝင်ပါ</p>
+        <button class="btn" id="googleLogin">Login with Google</button>
+    </div>
+
+    <div id="user-profile">
+        <img id="user-pic" class="user-img" src="" width="60">
+        <h3 id="user-name"></h3>
+        <p id="user-email" style="font-size: 12px; color: gray;"></p>
+        
+        <hr>
+        
+        <h4>ကျောင်းသားအချက်အလက်သွင်းရန်</h4>
+        <input type="text" id="stuName" placeholder="ကျောင်းသားအမည်">
+        <input type="text" id="stuPhone" placeholder="ဖုန်းနံပါတ်">
+        <button class="btn" style="background-color: #0f9d58;" onclick="saveData()">Save to Database</button>
+        
+        <button class="btn" style="background-color: #db4437; margin-top: 20px; font-size: 12px;" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // သင်ပေးထားသော Firebase Configuration အား အစားထိုးထားခြင်းဖြစ်သည်
+    const firebaseConfig = {
+        apiKey: "AIzaSyDFVm4Qht1XHdkimbHX4lcvoBVoEao99cQ",
+        authDomain: "la-kyan-myae---learning.firebaseapp.com",
+        projectId: "la-kyan-myae---learning",
+        storageBucket: "la-kyan-myae---learning.firebasestorage.app",
+        messagingSenderId: "1083286079212",
+        appId: "1:1083286079212:web:330dea4d4dc115cf8747c9",
+        measurementId: "G-2B6RPZJV1B"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    // Google Login Function
+    document.getElementById('googleLogin').onclick = () => {
+        signInWithPopup(auth, provider).catch(error => {
+            alert("Error: " + error.message);
+        });
+    };
+
+    // Logout Function
+    window.logout = () => {
+        if(confirm("Logout ထွက်မှာ သေချာပါသလား?")) {
+            signOut(auth);
+        }
+    };
+
+    // Data Save Function
+    window.saveData = async () => {
+        const name = document.getElementById('stuName').value;
+        const phone = document.getElementById('stuPhone').value;
+        
+        if(name && phone) {
+            try {
+                await addDoc(collection(db, "students"), {
+                    studentName: name,
+                    phoneNumber: phone,
+                    submittedBy: auth.currentUser.email,
+                    date: new Date().toLocaleString()
+                });
+                alert("Data သိမ်းဆည်းမှု အောင်မြင်ပါသည်။");
+                document.getElementById('stuName').value = "";
+                document.getElementById('stuPhone').value = "";
+            } catch (e) {
+                alert("Error adding document: " + e.message);
+            }
+        } else {
+            alert("အမည်နှင့် ဖုန်းနံပါတ်ကို အရင်ဖြည့်ပါ");
+        }
+    };
+
+    // Login အခြေအနေကို စစ်ဆေးခြင်း
+    onAuthStateChanged(auth, (user) => {
+        const loginSection = document.getElementById('login-section');
+        const userProfile = document.getElementById('user-profile');
+        
+        if (user) {
+            loginSection.style.display = 'none';
+            userProfile.style.display = 'block';
+            document.getElementById('user-name').innerText = user.displayName;
+            document.getElementById('user-email').innerText = user.email;
+            document.getElementById('user-pic').src = user.photoURL;
+        } else {
+            loginSection.style.display = 'block';
+            userProfile.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
