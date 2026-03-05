@@ -1,123 +1,182 @@
 <!DOCTYPE html>
-<html lang="my">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Kyan Myae Learning Center</title>
+    <title>La Kyan Myae - Advanced LMS</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        body { font-family: sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
-        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        h1 { color: #1a73e8; }
-        .btn { background-color: #4285F4; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; width: 100%; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
-        #user-profile { display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
-        .user-img { border-radius: 50%; margin-bottom: 10px; border: 2px solid #4285F4; }
+        :root { --primary: #1a73e8; --bg: #ffffff; --text: #333; --card: #f8f9fa; }
+        [data-theme="dark"] { --bg: #121212; --text: #e0e0e0; --card: #1e1e1e; }
+        
+        body { margin: 0; font-family: sans-serif; background: var(--bg); color: var(--text); }
+        nav { display: flex; justify-content: space-between; padding: 15px 5%; background: var(--bg); box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        
+        /* Admin Upload Styles */
+        .admin-upload-panel { display: none; background: var(--card); padding: 30px; margin: 20px 5%; border-radius: 15px; border: 2px dashed var(--primary); }
+        
+        /* Messenger Styles */
+        #chat-widget { position: fixed; bottom: 20px; right: 20px; width: 300px; height: 400px; background: var(--bg); border: 1px solid #ddd; border-radius: 10px; display: flex; flex-direction: column; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        #chat-messages { flex: 1; overflow-y: auto; padding: 10px; font-size: 14px; }
+        .msg { margin-bottom: 10px; padding: 8px; border-radius: 5px; max-width: 80%; }
+        .msg.admin { background: var(--primary); color: white; align-self: flex-end; margin-left: auto; }
+        .msg.student { background: #eee; color: #333; }
+        #chat-input-area { display: flex; padding: 10px; border-top: 1px solid #ddd; }
+        
+        .admin-only { display: none; }
+        .btn { padding: 10px 20px; border-radius: 5px; cursor: pointer; border: none; }
+        .btn-primary { background: var(--primary); color: white; }
     </style>
 </head>
-<body>
+<body data-theme="light">
 
-<div class="container">
-    <h1>La Kyan Myae</h1>
-    <p>English & Computer Learning Center</p>
+<nav>
+    <div id="logo-container">
+        <img id="main-logo" src="https://via.placeholder.com/50" alt="Logo" style="height: 40px;">
+        <span style="font-weight:bold; font-size:20px;">La Kyan Myae</span>
+    </div>
+    <div>
+        <i class="fas fa-moon" onclick="toggleTheme()" style="cursor:pointer; margin-right:15px;"></i>
+        <button class="btn btn-primary" id="loginBtn" onclick="handleAuth()">Login</button>
+    </div>
+</nav>
 
-    <div id="login-section">
-        <p>ရှေ့ဆက်ရန် Google ဖြင့် Login ဝင်ပါ</p>
-        <button class="btn" id="googleLogin">Login with Google</button>
+<section class="admin-upload-panel admin-only" id="uploadPanel">
+    <h3><i class="fas fa-upload"></i> Admin Control: Upload Logo or Activity</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+            <label>Upload New Logo:</label>
+            <input type="file" id="logoInput" accept="image/*">
+            <button class="btn btn-primary" onclick="uploadFile('logo')">Update Logo</button>
+        </div>
+        <div>
+            <label>Post New Activity (Photo):</label>
+            <input type="file" id="activityInput" accept="image/*">
+            <input type="text" id="activityTitle" placeholder="Activity Description">
+            <button class="btn btn-primary" onclick="uploadFile('activity')">Post Activity</button>
+        </div>
+    </div>
+</section>
+
+<h2 style="text-align:center; margin-top:30px;">School Activities</h2>
+<div id="activity-feed" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; padding:0 5%;">
     </div>
 
-    <div id="user-profile">
-        <img id="user-pic" class="user-img" src="" width="60">
-        <h3 id="user-name"></h3>
-        <p id="user-email" style="font-size: 12px; color: gray;"></p>
-        
-        <hr>
-        
-        <h4>ကျောင်းသားအချက်အလက်သွင်းရန်</h4>
-        <input type="text" id="stuName" placeholder="ကျောင်းသားအမည်">
-        <input type="text" id="stuPhone" placeholder="ဖုန်းနံပါတ်">
-        <button class="btn" style="background-color: #0f9d58;" onclick="saveData()">Save to Database</button>
-        
-        <button class="btn" style="background-color: #db4437; margin-top: 20px; font-size: 12px;" onclick="logout()">Logout</button>
+<div id="chat-widget">
+    <div style="background:var(--primary); color:white; padding:10px; border-radius:10px 10px 0 0;">
+        <i class="fas fa-comments"></i> Support Chat
+    </div>
+    <div id="chat-messages"></div>
+    <div id="chat-input-area">
+        <input type="text" id="chatInput" placeholder="Write a message..." style="flex:1; padding:5px;">
+        <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // သင်ပေးထားသော Firebase Configuration အား အစားထိုးထားခြင်းဖြစ်သည်
+<script>
+    // Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyDFVm4Qht1XHdkimbHX4lcvoBVoEao99cQ",
         authDomain: "la-kyan-myae---learning.firebaseapp.com",
         projectId: "la-kyan-myae---learning",
         storageBucket: "la-kyan-myae---learning.firebasestorage.app",
         messagingSenderId: "1083286079212",
-        appId: "1:1083286079212:web:330dea4d4dc115cf8747c9",
-        measurementId: "G-2B6RPZJV1B"
+        appId: "1:1083286079212:web:330dea4d4dc115cf8747c9"
     };
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const provider = new GoogleAuthProvider();
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const adminUID = "qJoqOXQcyNarDuwpDacByJdPcvj1";
 
-    // Google Login Function
-    document.getElementById('googleLogin').onclick = () => {
-        signInWithPopup(auth, provider).catch(error => {
-            alert("Error: " + error.message);
-        });
-    };
-
-    // Logout Function
-    window.logout = () => {
-        if(confirm("Logout ထွက်မှာ သေချာပါသလား?")) {
-            signOut(auth);
+    // Auth & Access Control
+    firebase.auth().onAuthStateChanged(user => {
+        const adminOnly = document.querySelectorAll('.admin-only');
+        if (user && user.uid === adminUID) {
+            adminOnly.forEach(el => el.style.display = 'block');
+            document.getElementById('uploadPanel').style.display = 'block';
         }
-    };
-
-    // Data Save Function
-    window.saveData = async () => {
-        const name = document.getElementById('stuName').value;
-        const phone = document.getElementById('stuPhone').value;
-        
-        if(name && phone) {
-            try {
-                await addDoc(collection(db, "students"), {
-                    studentName: name,
-                    phoneNumber: phone,
-                    submittedBy: auth.currentUser.email,
-                    date: new Date().toLocaleString()
-                });
-                alert("Data သိမ်းဆည်းမှု အောင်မြင်ပါသည်။");
-                document.getElementById('stuName').value = "";
-                document.getElementById('stuPhone').value = "";
-            } catch (e) {
-                alert("Error adding document: " + e.message);
-            }
-        } else {
-            alert("အမည်နှင့် ဖုန်းနံပါတ်ကို အရင်ဖြည့်ပါ");
-        }
-    };
-
-    // Login အခြေအနေကို စစ်ဆေးခြင်း
-    onAuthStateChanged(auth, (user) => {
-        const loginSection = document.getElementById('login-section');
-        const userProfile = document.getElementById('user-profile');
-        
-        if (user) {
-            loginSection.style.display = 'none';
-            userProfile.style.display = 'block';
-            document.getElementById('user-name').innerText = user.displayName;
-            document.getElementById('user-email').innerText = user.email;
-            document.getElementById('user-pic').src = user.photoURL;
-        } else {
-            loginSection.style.display = 'block';
-            userProfile.style.display = 'none';
-        }
+        loadActivities();
+        loadMessages();
     });
-</script>
 
+    // --- 1. Upload Logic (Logo & Activities) ---
+    async function uploadFile(type) {
+        const fileInput = type === 'logo' ? document.getElementById('logoInput') : document.getElementById('activityInput');
+        const file = fileInput.files[0];
+        if (!file) return alert("Select a file first");
+
+        const ref = storage.ref(`uploads/${type}_${Date.now()}`);
+        await ref.put(file);
+        const url = await ref.getDownloadURL();
+
+        if (type === 'logo') {
+            await db.collection("settings").doc("theme").set({ logoUrl: url }, { merge: true });
+            alert("Logo Updated!");
+        } else {
+            const title = document.getElementById('activityTitle').value;
+            await db.collection("activities").add({ url, title, date: new Date() });
+            alert("Activity Posted!");
+        }
+    }
+
+    // --- 2. Load Activities ---
+    function loadActivities() {
+        db.collection("activities").orderBy("date", "desc").onSnapshot(snap => {
+            const feed = document.getElementById('activity-feed');
+            feed.innerHTML = "";
+            snap.forEach(doc => {
+                const data = doc.data();
+                feed.innerHTML += `
+                    <div style="background:var(--card); border-radius:10px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+                        <img src="${data.url}" style="width:100%; height:180px; object-fit:cover;">
+                        <div style="padding:15px;"><h4>${data.title}</h4></div>
+                    </div>`;
+            });
+        });
+    }
+
+    // --- 3. Messenger Logic ---
+    function sendMessage() {
+        const text = document.getElementById('chatInput').value;
+        const user = firebase.auth().currentUser;
+        if (!text || !user) return alert("Please login to chat");
+
+        db.collection("messages").add({
+            text: text,
+            uid: user.uid,
+            email: user.email,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('chatInput').value = "";
+    }
+
+    function loadMessages() {
+        db.collection("messages").orderBy("timestamp", "asc").limitToLast(20).onSnapshot(snap => {
+            const box = document.getElementById('chat-messages');
+            box.innerHTML = "";
+            snap.forEach(doc => {
+                const data = doc.data();
+                const isMyMsg = data.uid === adminUID ? 'admin' : 'student';
+                box.innerHTML += `<div class="msg ${isMyMsg}"><b>${data.email.split('@')[0]}:</b><br>${data.text}</div>`;
+            });
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    function handleAuth() {
+        const user = firebase.auth().currentUser;
+        user ? firebase.auth().signOut() : window.location.href = "login.html";
+    }
+
+    function toggleTheme() {
+        document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    }
+</script>
 </body>
 </html>
