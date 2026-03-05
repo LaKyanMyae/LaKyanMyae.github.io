@@ -3,38 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Kyan Myae - Unified Admin Panel</title>
+    <title>Advanced Admin Panel - La Kyan Myae</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Pyidaungsu&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Pyidaungsu', sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #3498db; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .source-tag { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
+        body { font-family: 'Pyidaungsu', sans-serif; background-color: #f0f2f5; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .stats-card { background: #1a73e8; color: white; padding: 10px 20px; border-radius: 8px; font-size: 18px; }
+        .btn-excel { background: #27ae60; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-excel:hover { background: #219150; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border: 1px solid #eee; text-align: left; }
+        th { background-color: #1a73e8; color: white; }
+        .btn-delete { background: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-delete:hover { background: #c0392b; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>ကျောင်းသားစာရင်း (Unified Admin)</h2>
+    <div class="header-flex">
+        <h2>ကျောင်းသားစီမံခန့်ခွဲမှုစနစ်</h2>
+        <div class="stats-card">စုစုပေါင်းကျောင်းသား: <span id="studentCount">0</span> ယောက်</div>
+        <button class="btn-excel" onclick="exportToExcel()">Excel ထုတ်ယူမည်</button>
+    </div>
+
     <table id="studentTable">
         <thead>
             <tr>
                 <th>အမည်</th>
                 <th>ဖုန်းနံပါတ်</th>
                 <th>ပို့သည့်အချိန်</th>
-                <th>ပို့သည့်နေရာ (Email)</th>
+                <th>Email</th>
+                <th>လုပ်ဆောင်ချက်</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            </tbody>
+        <tbody id="tableBody"></tbody>
     </table>
-    <div id="loading" style="text-align:center; padding: 20px;">အချက်အလက်များကို စုစည်းနေပါသည်...</div>
+    <div id="loading" style="text-align:center; padding: 20px;">အချက်အလက်များ ရယူနေပါသည်...</div>
 </div>
 
 <script>
@@ -50,31 +60,51 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Firestore ထဲက 'students' collection ကို Real-time စောင့်ကြည့်ခြင်း
+    // ဒေတာများကို Real-time ဖတ်ခြင်းနှင့် အရေအတွက်တွက်ခြင်း
     db.collection("students").orderBy("date", "desc").onSnapshot((querySnapshot) => {
         const tableBody = document.getElementById('tableBody');
+        const countSpan = document.getElementById('studentCount');
         const loading = document.getElementById('loading');
+        
         tableBody.innerHTML = "";
+        countSpan.innerText = querySnapshot.size; // ကျောင်းသားအရေအတွက်ပြခြင်း
         
         if (querySnapshot.empty) {
-            loading.innerText = "စာရင်းသွင်းထားသော ကျောင်းသား မရှိသေးပါ။";
+            loading.innerText = "စာရင်းသွင်းထားသူ မရှိသေးပါ။";
         } else {
             loading.style.display = "none";
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 const row = `<tr>
-                    <td><strong>${data.studentName || 'N/A'}</strong></td>
+                    <td>${data.studentName || 'N/A'}</td>
                     <td>${data.phoneNumber || 'N/A'}</td>
                     <td>${data.date || 'N/A'}</td>
-                    <td><span class="source-tag">${data.submittedBy || 'Unknown'}</span></td>
+                    <td>${data.submittedBy || 'Unknown'}</td>
+                    <td><button class="btn-delete" onclick="deleteStudent('${doc.id}')">ဖျက်မည်</button></td>
                 </tr>`;
                 tableBody.innerHTML += row;
             });
         }
-    }, (error) => {
-        console.error("Error fetching data: ", error);
-        document.getElementById('loading').innerText = "ဒေတာဖတ်မရပါ။ Rules ကို စစ်ဆေးပါ။";
     });
+
+    // စာရင်းဖျက်သည့် Function
+    function deleteStudent(docId) {
+        if (confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) {
+            db.collection("students").doc(docId).delete().then(() => {
+                alert("စာရင်းဖျက်ပြီးပါပြီ။");
+            }).catch((error) => {
+                console.error("Error deleting document: ", error);
+            });
+        }
+    }
+
+    // Excel ထုတ်ယူသည့် Function
+    function exportToExcel() {
+        const table = document.getElementById("studentTable");
+        // ဖျက်သည့်ခလုတ်ပါသော နောက်ဆုံးကော်လံကို Excel ထဲမထည့်ရန် ယာယီဖယ်ထုတ်ခြင်း
+        const wb = XLSX.utils.table_to_book(table, {sheet: "Students"});
+        XLSX.writeFile(wb, "Student_List.xlsx");
+    }
 </script>
 </body>
 </html>
